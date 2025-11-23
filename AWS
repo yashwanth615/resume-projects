@@ -1,0 +1,26 @@
+#!/bin/bash
+
+LOG_DIR="/var/log/aws-usage"
+mkdir -p $LOG_DIR
+DATE=$(date +"%Y-%m-%d_%H-%M-%S")
+LOG_FILE="$LOG_DIR/aws_usage_$DATE.log"
+
+echo "AWS Resource Usage Report - $DATE" > "$LOG_FILE"
+
+echo "[EC2 Instances]" >> "$LOG_FILE"
+aws ec2 describe-instances \
+    --query "Reservations[].Instances[].{InstanceID:InstanceId,Type:InstanceType,State:State.Name}" \
+    --output table >> "$LOG_FILE"
+echo "EC2 Count: $(aws ec2 describe-instances --query 'Reservations[*].Instances[*].InstanceId' --output json | jq length)" >> "$LOG_FILE"
+
+echo "[S3 Buckets]" >> "$LOG_FILE"
+aws s3 ls >> "$LOG_FILE"
+echo "S3 Count: $(aws s3 ls | wc -l)" >> "$LOG_FILE"
+
+echo "[VPCs]" >> "$LOG_FILE"
+aws ec2 describe-vpcs \
+    --query "Vpcs[].{VPCID:VpcId,CIDR:CidrBlock}" \
+    --output table >> "$LOG_FILE"
+echo "VPC Count: $(aws ec2 describe-vpcs --query 'Vpcs[*].VpcId' --output json | jq length)" >> "$LOG_FILE"
+
+echo "Report saved to: $LOG_FILE"
